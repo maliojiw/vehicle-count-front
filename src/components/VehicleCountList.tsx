@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "../services/axios";
-import { Table, Button, Input } from "antd";
+import { Table, Button, Input, Select } from "antd";
 import { useNavigate } from "react-router-dom";
+
+const { Option } = Select;
 
 interface VehicleCount {
   vehicleType: string;
@@ -16,6 +18,9 @@ const VehicleCountList: React.FC = () => {
     VehicleCount[]
   >([]);
   const [searchText, setSearchText] = useState("");
+  const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,7 +32,7 @@ const VehicleCountList: React.FC = () => {
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
         setVehicleCounts(sortedData);
-        setFilteredVehicleCounts(sortedData);
+        filterData(sortedData, searchText, selectedPeriod);
       } catch (error) {
         console.error("Error fetching vehicle counts:", error);
       }
@@ -35,12 +40,40 @@ const VehicleCountList: React.FC = () => {
     fetchVehicleCounts();
   }, []);
 
+  const filterData = (data: VehicleCount[], search: string, period: string) => {
+    const now = new Date();
+    const filtered = data.filter((item) => {
+      const itemDate = new Date(item.timestamp);
+
+      let isWithinPeriod = true;
+      if (period === "24h")
+        isWithinPeriod =
+          now.getTime() - itemDate.getTime() <= 24 * 60 * 60 * 1000;
+      else if (period === "7d")
+        isWithinPeriod =
+          now.getTime() - itemDate.getTime() <= 7 * 24 * 60 * 60 * 1000;
+      else if (period === "30d")
+        isWithinPeriod =
+          now.getTime() - itemDate.getTime() <= 30 * 24 * 60 * 60 * 1000;
+
+      const matchesSearch = item.vehicleType
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+      return isWithinPeriod && matchesSearch;
+    });
+
+    setFilteredVehicleCounts(filtered);
+  };
+
   const handleSearch = (value: string) => {
     setSearchText(value);
-    const filteredData = vehicleCounts.filter((item) =>
-      item.vehicleType.toLowerCase().includes(value.toLowerCase())
-    );
-    setFilteredVehicleCounts(filteredData);
+    filterData(vehicleCounts, value, selectedPeriod);
+  };
+
+  const handlePeriodChange = (value: string) => {
+    setSelectedPeriod(value);
+    filterData(vehicleCounts, searchText, value);
   };
 
   const columns = [
@@ -69,18 +102,42 @@ const VehicleCountList: React.FC = () => {
   return (
     <div>
       <h2>Vehicle Counts</h2>
-      <Input
-        placeholder="Search by vehicle type..."
-        value={searchText}
-        onChange={(e) => handleSearch(e.target.value)}
-        style={{ marginBottom: "10px", width: "300px" }}
-      />
+
+      <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+        <Input
+          placeholder="Search by vehicle type..."
+          value={searchText}
+          onChange={(e) => handleSearch(e.target.value)}
+          style={{ width: "300px" }}
+        />
+
+        <Select
+          value={selectedPeriod}
+          onChange={handlePeriodChange}
+          style={{ width: "200px" }}
+        >
+          <Option value="all">All Time</Option>
+          <Option value="24h">Last 24 Hours</Option>
+          <Option value="7d">Last 7 Days</Option>
+          <Option value="30d">Last 30 Days</Option>
+        </Select>
+      </div>
+
       <Table
         dataSource={filteredVehicleCounts}
         columns={columns}
         rowKey="_id"
-        pagination={false}
+        pagination={{
+          current: currentPage,
+          pageSize: pageSize,
+          total: filteredVehicleCounts.length,
+          onChange: (page, pageSize) => {
+            setCurrentPage(page);
+            setPageSize(pageSize);
+          },
+        }}
       />
+
       <Button
         type="primary"
         onClick={handleGoToDashboard}
