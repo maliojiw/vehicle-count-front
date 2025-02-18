@@ -22,17 +22,15 @@ const AddVehicleCount: React.FC = () => {
         timestamp: new Date(values.timestamp),
       };
 
-      const response = await axios.post("/vehicle-counts", newVehicleCount);
+      await axios.post("/vehicle-counts", newVehicleCount);
 
-      if (response.status === 200) {
-        notification.success({
-          message: "Vehicle Count Added",
-          description: "The vehicle count has been successfully added.",
-          duration: 3,
-        });
+      notification.success({
+        message: "Vehicle Count Added",
+        description: `The vehicle count for ${values.vehicleType} has been successfully added with count ${values.count}.`,
+        duration: 3,
+      });
 
-        form.resetFields();
-      }
+      form.resetFields();
     } catch (error) {
       console.error("Error adding vehicle count:", error);
       notification.error({
@@ -42,10 +40,6 @@ const AddVehicleCount: React.FC = () => {
         duration: 3,
       });
     }
-  };
-
-  const resetForm = () => {
-    form.resetFields();
   };
 
   return (
@@ -96,8 +90,8 @@ const AddVehicleCount: React.FC = () => {
         <Button onClick={() => navigate("/")}>
           Back to Vehicle Count List
         </Button>
-        <Button onClick={resetForm} type="default">
-          Clear Form
+        <Button onClick={() => form.resetFields()} type="default">
+          Reset
         </Button>
       </div>
     </div>
